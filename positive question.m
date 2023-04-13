@@ -1,15 +1,13 @@
 clear 
 clc
 tic
-
+% ST condition in oil industry
 T_st = 15.6;
 p_st = 101.325;  % [kPa]
-NG = WorkingFluid('Haynesville1.mix',T_st,p_st);
+NG = WorkingFluid('Haynesville1.mix',T_st,p_st);  % predifine the 'Haynesville1' gas in REFPROP
 rho_st = NG.density();
 
 d = 50; 
-% dd = d*1e-4;
-% d = d+dd;
 Dx = 1; % useful in function
 H = 30;
 L = 106.5;
@@ -17,7 +15,7 @@ N = 1000;
 x = linspace(0,1,N+1); % coordinates
 Nf = 10;
 
-% BD
+% Boundary Condition
 h1 = 0;
 h2 = 1;
 h3 = 0; 
@@ -40,31 +38,30 @@ Zg0 = NG.compFactor();
 NG.pressure = pf;
 miuf = NG.dynamicViscosity();
 rhof = NG.density();
-shale.k = 0.5e-6*(9.869233e-13);  % [D] to [m^2]
+shale.k = 0.5e-6*(9.869233e-13);                      % [Darcy] to [m^2]
 shale.e = 0.06;                                                                  
 shale.Sg = 0.75;
 shale.Sw = 1-shale.Sg;
 
-% Langmuir model
-pl = 710*6.895;
-vl = 119*3.121e-2/9.072e2;
-shale.ea0 = 0;
+% adsorption gas can be ignored in Haynesville shale
+% pl = 710*6.895;
+% vl = 119*3.121e-2/9.072e2;
 % shale.ea0 = ea_L(pi,pl,vl,cg0,rho0,rho_st);
+shale.ea0 = 0;
 ai = shale.k/(shale.e*shale.Sg+shale.ea0)/miu0/cg0;
-tau = d^2/ai/3600/24;  % unit is day
-M = Nf*4*L*H*d*(shale.e*shale.Sg+shale.ea0)*rho0;
+tau = d^2/ai/3600/24;                                % inteference time,the unit is day
+M = Nf*4*L*H*d*(shale.e*shale.Sg+shale.ea0)*rho0;    % total mass of gas in SRV
 
-% 
-dt = 0.005;
-% dt = floor(dt*1e5)/1e5; 
-t = 0:dt:(2000*dt);
-Nt = length(t);
+% N grids,N+1 points
 i = 1:N+1;
 P_old(i) = 1;
 P(:,1) = P_old';
-P(:,Nt) = zeros(N+1,1);
+P(:,Nt) = zeros(N+1,1);                              % initial dimensionless pressure=1,
 
-% 
+% Time term matrix
+dt = 0.005;
+t = 0:dt:(2000*dt);
+Nt = length(t);
 e = ones(N+1,1);
 At = diag(e)/dt; 
 At(1,1) = 0;
@@ -114,13 +111,9 @@ for step = 2:Nt
     hold on
     end
 end
-  delta_P = (P(2,:)-P(1,:))*(pi-pf);
-%    delta_P = (P(2,:)-P(1,:));
-%    p2 = P_old(2,1)*(pi-pf)+pf;  
+ delta_P = (P(2,:)-P(1,:))*(pi-pf); 
     m_rate = Nf*4*H*L*N*shale.k*1000*delta_P*rhof/(d*miuf);  
-    m_rate = m_rate';
- %  L2 = length(m_rate)-1;
-  %  m_rate = (m_rate(2:end))+0.1*randn(L2,1);
+  m_rate = m_rate';
   m_cum = cumsum(m_rate)*dt*tau*3600*24;
   RF = m_cum/M;
   figure(2)
